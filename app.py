@@ -1,104 +1,102 @@
 import streamlit as st
 import pickle
 import numpy as np
-import pandas as pd
-import requests
-from streamlit_lottie import st_lottie
 
-# 1. Page Configuration
-st.set_page_config(
-    page_title="Taxi/Ride Fare Predictor",
-    page_icon="🚖",
-    layout="centered",
-    initial_sidebar_state="expanded"
-)
+# Set page layout and title
+st.set_page_config(page_title="Trip Fare Predictor", page_icon="🚖", layout="centered")
 
-# 2. Function to Load Lottie Animations
-def load_lottieurl(url: str):
-    try:
-        r = requests.get(url)
-        if r.status_code != 200:
-            return None
-        return r.json()
-    except Exception:
-        return None
+# Custom CSS for a clean, modern look
+st.markdown("""
+    <style>
+    .main { background-color: #f8f9fa; }
+    .stButton>button {
+        background-color: #ff4b4b;
+        color: white;
+        width: 100%;
+        border-radius: 8px;
+        font-size: 18px;
+        height: 50px;
+    }
+    .result-box {
+        padding: 20px;
+        background-color: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        color: #2e7d32;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-# Load a clean ride-sharing/taxi animation
-lottie_taxi = load_lottieurl("https://assets5.lottiefiles.com/packages/lf20_vyb8gqvl.json")
+st.title("🚖 Trip Fare Prediction App")
+st.write("Enter the trip details below to estimate the total fare.")
 
-# 3. Load the Pickled Model Safely
+# Load the model securely
 @st.cache_resource
 def load_model():
-    try:
-        with open("model (9).pkl", "rb") as f:
-            model = pickle.load(f)
-        return model
-    except FileNotFoundError:
-        st.error("⚠️ 'model (9).pkl' not found. Please ensure the file is in the same directory as app.py.")
-        return None
+    # Make sure 'model (9).pkl' is in the same directory as this script
+    with open("model (9).pkl", "rb") as file:
+        model = pickle.load(file)
+    return model
 
-model = load_model()
+try:
+    model = load_model()
+except FileNotFoundError:
+    st.error("❌ 'model (9).pkl' file not found! Please place it in the same directory as app.py.")
+    st.stop()
 
-# 4. App Header & Animation
-st.title("🚖 Fare Estimation Engine")
-st.markdown("Enter the trip details below to predict the estimated fare in real-time.")
+# Form layout split into two columns
+col1, col2 = st.columns(2)
 
-if lottie_taxi:
-    st_lottie(lottie_taxi, height=200, key="taxi_animation")
-else:
-    st.write("---")
-
-# 5. User Input Form
-st.subheader("📋 Trip Specifications")
-
-with st.form("prediction_form"):
-    col1, col2 = st.columns(2)
+with col1:
+    trip_distance = st.number_input("Trip Distance (km)", min_value=0.0, value=5.0, step=0.1)
     
-    with col1:
-        trip_distance = st.number_input("Trip Distance (km)", min_value=0.0, max_value=500.0, value=5.0, step=0.1)
-        # Note: If your model expects encoded numerical values for categorical features, 
-        # ensure these selections map exactly to how you encoded them during training.
-        time_of_day = st.selectbox("Time of Day", options=[0, 1, 2, 3], format_func=lambda x: ["Morning", "Afternoon", "Evening", "Night"][x])
-        day_of_week = st.selectbox("Day of Week", options=[0, 1, 2, 3, 4, 5, 6], format_func=lambda x: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][x])
-        passenger_count = st.number_input("Passenger Count", min_value=1, max_value=8, value=1, step=1)
-        traffic_conditions = st.selectbox("Traffic Conditions", options=[0, 1, 2], format_func=lambda x: ["Low", "Medium", "High"][x])
+    # Mapping categorical values to numeric values if your model encoded them as such
+    time_of_day = st.selectbox("Time of Day", options=["Morning", "Afternoon", "Evening", "Night"], index=0)
+    time_mapping = {"Morning": 0, "Afternoon": 1, "Evening": 2, "Night": 3}
+    
+    day_of_week = st.selectbox("Day of Week", options=["Weekday", "Weekend"], index=0)
+    day_mapping = {"Weekday": 0, "Weekend": 1}
+    
+    passenger_count = st.number_input("Passenger Count", min_value=1, max_value=8, value=1)
+    
+    traffic_cond = st.selectbox("Traffic Conditions", options=["Low", "Medium", "High"], index=1)
+    traffic_mapping = {"Low": 0, "Medium": 1, "High": 2}
 
-    with col2:
-        weather = st.selectbox("Weather Conditions", options=[0, 1, 2], format_func=lambda x: ["Clear", "Rainy", "Snowy"][x])
-        base_fare = st.number_input("Base Fare ($)", min_value=0.0, value=2.50, step=0.50)
-        per_km_rate = st.number_input("Per Km Rate ($)", min_value=0.0, value=1.20, step=0.10)
-        per_minute_rate = st.number_input("Per Minute Rate ($)", min_value=0.0, value=0.35, step=0.05)
-        trip_duration = st.number_input("Trip Duration (Minutes)", min_value=0.0, max_value=1440.0, value=15.0, step=1.0)
+with col2:
+    weather = st.selectbox("Weather", options=["Clear", "Rainy", "Snowy", "Foggy"], index=0)
+    weather_mapping = {"Clear": 0, "Rainy": 1, "Snowy": 2, "Foggy": 3}
+    
+    base_fare = st.number_input("Base Fare ($)", min_value=0.0, value=2.5, step=0.5)
+    per_km_rate = st.number_input("Per Km Rate ($)", min_value=0.0, value=1.5, step=0.1)
+    per_minute_rate = st.number_input("Per Minute Rate ($)", min_value=0.0, value=0.3, step=0.05)
+    trip_duration = st.number_input("Trip Duration (Minutes)", min_value=0.0, value=15.0, step=1.0)
 
-    # Submit Button
-    submit_btn = st.form_submit_button("Calculate Estimated Fare")
+st.markdown("---")
 
-# 6. Prediction Logic
-if submit_btn:
-    if model is not None:
-        # Construct features array in the exact order your model expects:
-        # [Trip_Distance_km, Time_of_Day, Day_of_Week, Passenger_Count, Traffic_Conditions, Weather, Base_Fare, Per_Km_Rate, Per_Minute_Rate, Trip_Duration_Minutes]
-        features = np.array([[
-            trip_distance,
-            time_of_day,
-            day_of_week,
-            passenger_count,
-            traffic_conditions,
-            weather,
-            base_fare,
-            per_km_rate,
-            per_minute_rate,
-            trip_duration
-        ]], dtype=float)
-        
-        try:
-            # Generate prediction
-            prediction = model.predict(features)[0]
-            
-            # Display results beautifully
-            st.success("🎉 Estimation Complete!")
-            st.metric(label="Predicted Total Fare", value=f"${prediction:,.2f}")
-            
-        except Exception as e:
-            st.error(f"Prediction Error: {e}")
-            st.info("💡 Double-check that your model does not require text strings or explicit one-hot encoded arrays.")
+# Predict button
+if st.button("Calculate Estimated Fare"):
+    # Convert encoded variables to their numeric equivalents
+    features = np.array([[
+        trip_distance,
+        time_mapping[time_of_day],
+        day_mapping[day_of_week],
+        passenger_count,
+        traffic_mapping[traffic_cond],
+        weather_mapping[weather],
+        base_fare,
+        per_km_rate,
+        per_minute_rate,
+        trip_duration
+    ]])
+    
+    # Make prediction
+    prediction = model.predict(features)[0]
+    
+    # Display the output cleanly
+    st.markdown(
+        f'<div class="result-box">💰 Estimated Fare: ${prediction:.2f}</div>', 
+        unsafe_allow_html=True
+    )
