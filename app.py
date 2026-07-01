@@ -96,7 +96,9 @@ if st.button("Calculate Estimated Fare"):
     prediction = model.predict(features)[0]
     
     # Display the output cleanly
-    st.markdown(
-        f'<div class="result-box">💰 Estimated Fare: ${prediction:.2f}</div>', 
-        unsafe_allow_html=True
-    )
+    # ... some code above ...
+st.markdown(
+    f'<div class="result-box">💰 Estimated Fare: ${prediction.item():.2f}</div>',
+    unsafe_allow_html=True
+)
+
